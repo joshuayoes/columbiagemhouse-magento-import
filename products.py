@@ -108,7 +108,7 @@ output = {
     'Image Src': img_src_column, 
     'Image Position': empty_column,
     'Image Alt Text': products['_media_lable'], 
-    'Gift Card': empty_column,
+    'Gift Card': generate_column('FALSE'),
     'SEO Title': products['meta_title'],
     'SEO Description': products['meta_description'],
     'Variant Weight Unit': generate_column('g'),
