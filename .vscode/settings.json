@@ -1,0 +1,12 @@
+{
+    "python.pythonPath": ".venv/bin/python",
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true,
+    "cSpell.words": [
+        "openpyxl"
+    ],
+    "python.analysis.cacheFolderPath": ".cache",
+    "python.analysis.cachingLevel": "Library",
+    "python.languageServer": "Pylance",
+    "git.ignoreLimitWarning": true
+}
