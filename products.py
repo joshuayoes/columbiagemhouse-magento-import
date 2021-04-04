@@ -1,5 +1,7 @@
 import pandas as pd
 from typing import List
+import re
+import math
 
 IMPORT_PATH = 'data/catalog_product_20210403_173129.csv'
 OUTPUT_PATH = 'data/output.csv'
@@ -77,7 +79,28 @@ def generate_url(ext):
 
 img_src_column = list(map(generate_url, products['_media_image']))
 
+# Variant Grams
+def carats_to_grams(input: str):
+    if type(input) is not str:
+        return 0
 
+    decimal_regex = r'\d*\.{0,1}\d+'
+
+    try:
+        carat_decimal_str = re.search(decimal_regex, input).group()
+    except AttributeError:
+        carat_decimal_str = ''
+
+    if carat_decimal_str == '':
+        return 0
+
+    carat_float = float(carat_decimal_str)
+    grams_float = carat_float * 0.2
+    grams = math.floor(grams_float)
+
+    return grams
+
+variant_grams_column = list(map(carats_to_grams, products['total_gem_weight']))
 
 # Format to match Shopify import shape
 output = { 
@@ -95,7 +118,7 @@ output = {
     'Option3 Name': empty_column, # Needs work
     'Option3 Value': empty_column, # Needs work
     'Variant SKU': empty_column,
-    'Variant Grams': empty_column, # needs converstion
+    'Variant Grams': variant_grams_column, 
     'Variant Inventory Tracker': empty_column,  
     'Variant Inventory Qty': products['qty'],
     'Variant Inventory Policy': generate_column('deny'), 
