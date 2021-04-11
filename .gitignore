@@ -1,2 +1,3 @@
 .venv
-data/output.csv
+data/*.csv
+!data/catalog_product_*.csv
