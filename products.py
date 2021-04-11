@@ -226,7 +226,7 @@ def create_base_shopify_dict(input: dict):
 
     return row
 
-# Construct shopify_df_csv_output
+# Initialize shopify_df_csv_output
 final_columns = list(shopify_df.columns)
 final_values = []
 for column in final_columns:
@@ -260,29 +260,29 @@ for sku in skus:
                 option_title = f'Option{title_index + 1}'
                 title_column = f'{option_title} Name'
                 value_column =  f'{option_title} Value'
-                updated = {title_column: title, value_column: value}
+                new_option = {title_column: title, value_column: value}
                 
                 first_title = title_index == 0
                 first_value = value_index == 0
                 
                 if (first_title):
                     if (first_value):
-                        row = {**simple_product, **updated}
+                        row = {**simple_product, **new_option}
                         shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
                     else:
-                        new_option = {value_column: updated[value_column]}
+                        new_option = {value_column: new_option[value_column]}
                         row = {**create_base_shopify_dict(new_option), **variant_columns}
                         shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
                 else:
                     if (first_value):
-                        new_option = updated
+                        new_option = new_option
                     else:
-                        new_option = {value_column: updated[value_column]}                   
+                        new_option = {value_column: new_option[value_column]}                   
                     row = {**create_base_shopify_dict(new_option), **variant_columns}
                     shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
     else: 
-        updated = {'Option1 Name': 'Title', 'Option1 Value': 'Default Title'}
-        row = {**simple_product, **updated}
+        new_option = {'Option1 Name': 'Title', 'Option1 Value': 'Default Title'}
+        row = {**simple_product, **new_option}
         shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
 
                 
