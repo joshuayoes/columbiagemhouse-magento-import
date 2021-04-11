@@ -239,7 +239,7 @@ shopify_df_csv_output = pd.DataFrame(columns=final_columns)
 # Awkward and slow, but nececessary to get options formatted the way shopify wants it
 skus = list(shopify_df['Variant SKU'].unique())
 skus = filter_nan(skus)
-skus = skus[:10]
+# skus = skus[:10]
 for sku in skus:
     simple_product = get_shopify_product_by_sku(sku).to_dict('records')[0]
     has_options = len(get_option_titles_by_sku(sku)) > 0
