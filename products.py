@@ -4,10 +4,11 @@ import re
 import math
 import time
 
+NOW_DATE_TIME = time.strftime("%Y%m%d_%H%M%S")
 IMPORT_PATH = 'data/catalog_product_20210403_173129.csv'
-OUTPUT_PATH = f'data/shopify_import_{time.strftime("%Y%m%d_%H%M%S")}.csv'
+OUTPUT_PATH = f'data/shopify_product_import_{NOW_DATE_TIME}.csv'
 
-raw_products = pd.read_csv(IMPORT_PATH, low_memory=False)
+raw_magento_product_csv = pd.read_csv(IMPORT_PATH, low_memory=False)
 
 # Strip useless data
 def get_empty_columns(df: pd.DataFrame): 
@@ -20,8 +21,8 @@ def get_empty_columns(df: pd.DataFrame):
 
     return empty_columns
 
-unused_columns = ['_root_category', 'collections', 'msrp_display_actual_price_type', 'msrp_enabled', 'news_from_date', 'news_to_date', 'page_layout', 'special_from_date', 'special_to_date', 'tax_class_id'] + get_empty_columns(raw_products)
-magento_products = raw_products.drop(columns=unused_columns)
+unused_columns = ['_root_category', 'collections', 'msrp_display_actual_price_type', 'msrp_enabled', 'news_from_date', 'news_to_date', 'page_layout', 'special_from_date', 'special_to_date', 'tax_class_id'] + get_empty_columns(raw_magento_product_csv)
+magento_products = raw_magento_product_csv.drop(columns=unused_columns)
 
 # Magento Product Utilities
 magento_product_index_limit = len(magento_products.index)
@@ -139,6 +140,7 @@ shopify_df = {
     'SEO Description': magento_products['meta_description'],
     'Variant Weight Unit': generate_column('g'),
     'Status': status_column, 
+    'Collection': magento_products['collection_1'], 
 }
 
 shopify_df = pd.DataFrame(data=shopify_df) 
@@ -229,10 +231,6 @@ def create_base_shopify_dict(input: dict):
 
 # Initialize shopify_df_csv_output
 final_columns = list(shopify_df.columns)
-final_values = []
-for column in final_columns:
-    final_values.append([])
-
 shopify_df_csv_output = pd.DataFrame(columns=final_columns)
 
 # Populate shopify_df_csv_output with unique sku rows and their variants appended
@@ -256,6 +254,11 @@ for sku in skus:
 
         for title_index, title in enumerate(option_titles):
             option_values = all_option_values[title_index]
+
+            # Shopify has native limits to 3 options
+            # requires apps for extensions
+            if (title_index > 2):
+                break
 
             for value_index, value in enumerate(option_values):
                 option_title = f'Option{title_index + 1}'
