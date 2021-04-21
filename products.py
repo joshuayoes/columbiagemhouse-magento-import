@@ -80,8 +80,8 @@ def generate_url(ext):
 
 img_src_column = list(map(generate_url, magento_products['_media_image']))
 
-# Variant Grams
-def carats_to_grams(input: str):
+# Variant Grams column
+def parse_carats(input: str):
     if type(input) is not str:
         return 0
 
@@ -96,6 +96,13 @@ def carats_to_grams(input: str):
         return 0
 
     carat_float = float(carat_decimal_str)
+    return carat_float
+
+def carats_to_grams(input: str):
+    if type(input) is not str:
+        return 0
+
+    carat_float = parse_carats(input)
     grams_float = carat_float * 0.2
     grams = math.floor(grams_float)
 
@@ -103,7 +110,39 @@ def carats_to_grams(input: str):
 
 variant_grams_column = list(map(carats_to_grams, magento_products['total_gem_weight']))
 
+# Tags column
+tags_column = []
 
+def parse_total_gem_weight(input: str):
+    if type(input) is not str:
+        return ''
+
+    if re.search('varies', input, re.IGNORECASE):
+        return input.strip().title()
+
+    return f'{parse_carats(input)} cw'
+
+for index, row in magento_products.iterrows():
+    tags: List[str] = []
+    def add(label: str, input):
+        if type(input) is str and input != '':
+            tags.append(f"{label}{input.strip()}")
+
+    add('Total Gem Weight: ', parse_total_gem_weight(row["total_gem_weight"]))
+    add('Treatment: ', row["treatment"])
+    add('Color: ', row["colors"])
+    add('Fair Trade Level: ', row["fairtradelevel"])
+    add('Location: ', row["location"])
+    add('Origin: ', row["origin"])
+    add('Gem Type: ', row["species"])
+    add('Gem Cut: ', row["stonecut"])
+    add('Shape: ', row["stoneshape"])
+    add('Sub Shape: ', row["subshape"])
+    add('Stone Size: ', row["stonesize"])
+    add('Variety: ', row["variety"])
+
+    joined_tags = ', '.join(tags)
+    tags_column.append(joined_tags)
 
 
 # Format to match Shopify CSV import shape
@@ -113,7 +152,7 @@ shopify_df = {
     'Body (HTML)': magento_products['short_description'],
     'Vendor': empty_column,
     'Type': magento_products['_category'],
-    'Tags': empty_column,
+    'Tags': tags_column,
     'Published': published_column,
     'Option1 Name': empty_column, # Filled later
     'Option1 Value': empty_column, # Filled later
