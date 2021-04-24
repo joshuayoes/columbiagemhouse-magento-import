@@ -291,6 +291,15 @@ def create_base_shopify_dict(input: dict):
 
     return row
 
+def calculate_variant_price(base, variant):
+    if (pd.isnull(base)):
+        base = 0
+    
+    if (pd.isnull(variant)):
+        variant = 0
+    
+    return int(base) + int(variant)
+
 # Initialize shopify_df_csv_output
 final_columns = list(shopify_df.columns)
 shopify_df_csv_output = pd.DataFrame(columns=final_columns)
@@ -318,7 +327,7 @@ for sku in skus:
 
         for title_index, title in enumerate(option_titles):
             option_values = all_option_values[title_index]
-            option_prices = all_option_prices[title_index]
+            option_prices: pd.Series = all_option_prices[title_index]
 
             # Shopify has native limits to 3 options
             # requires apps for extensions
@@ -332,7 +341,7 @@ for sku in skus:
                 value_column =  f'{option_title} Value'
                 
                 value_price_increase = option_prices.values[value_index]
-                value_price = int(simple_product['Variant Price']) + int(value_price_increase)
+                value_price = calculate_variant_price(simple_product['Variant Price'], value_price_increase)
                 
                 new_option = {
                     title_column: title, 
