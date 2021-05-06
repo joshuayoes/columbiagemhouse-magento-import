@@ -1,8 +1,9 @@
 import pandas as pd
-from typing import List
+from typing import Dict, List
 import re
 import math
 import time
+from itertools import product
 
 NOW_DATE_TIME = time.strftime("%Y%m%d_%H%M%S")
 IMPORT_PATH = 'data/catalog_product_20210403_173129.csv'
@@ -144,6 +145,7 @@ for index, row in magento_products.iterrows():
     joined_tags = ', '.join(tags)
     tags_column.append(joined_tags)
 
+print('Tags column generated')
 
 # Format to match Shopify CSV import shape
 shopify_df = { 
@@ -183,7 +185,7 @@ shopify_df = {
 }
 
 shopify_df = pd.DataFrame(data=shopify_df) 
-
+print('shopify_df populated')
 
 
 
@@ -215,14 +217,14 @@ def get_variants_by_sku(sku: str):
 
 def get_option_titles_by_sku(sku: str):
     product_variants = get_variants_by_sku(sku)
-    option_titles = product_variants['_custom_option_title'].unique()
+    option_titles: List[str] = product_variants['_custom_option_title'].unique()
     option_titles = filter_nan(option_titles)
     return option_titles
 
 def get_option_values_by_sku(sku: str):
     product_variants = get_variants_by_sku(sku)
     option_titles = get_option_titles_by_sku(sku)
-    all_option_values = []
+    all_option_values: List[List[str]] = []
 
     for title in option_titles:
         title_start_index: int = product_variants.loc[product_variants['_custom_option_title'] == title].index[0]
@@ -246,7 +248,7 @@ def get_option_values_by_sku(sku: str):
 def get_option_price_by_sku(sku: str):
     product_variants = get_variants_by_sku(sku)
     option_titles = get_option_titles_by_sku(sku)
-    all_option_prices = []
+    all_option_prices: List[List[float]] = []
 
     for title in option_titles:
         title_start_index: int = product_variants.loc[product_variants['_custom_option_title'] == title].index[0]
@@ -310,67 +312,71 @@ skus = list(shopify_df['Variant SKU'].unique())
 skus = filter_nan(skus)
 # skus = skus[:10]
 for sku in skus:
+    start_time = time.time()
     simple_product = get_shopify_product_by_sku(sku).to_dict('records')[0]
     has_options = len(get_option_titles_by_sku(sku)) > 0
     variant_columns = {
         'Handle': simple_product['Handle'],
         'Variant Grams': simple_product['Variant Grams'],
-        'Variant Price': simple_product['Variant Price'],
         'Variant Weight Unit': simple_product['Variant Weight Unit'],
     }
 
-
-    if (has_options):
-        option_titles = get_option_titles_by_sku(sku)
-        all_option_values = get_option_values_by_sku(sku)
-        all_option_prices = get_option_price_by_sku(sku)
-
-        for title_index, title in enumerate(option_titles):
-            option_values = all_option_values[title_index]
-            option_prices: pd.Series = all_option_prices[title_index]
-
-            # Shopify has native limits to 3 options
-            # requires apps for extensions
-            if (title_index > 2):
-                break
-
-            for value_index, value in enumerate(option_values):
-                option_title = f'Option{title_index + 1}'
-
-                title_column = f'{option_title} Name'
-                value_column =  f'{option_title} Value'
-                
-                value_price_increase = option_prices.values[value_index]
-                value_price = calculate_variant_price(simple_product['Variant Price'], value_price_increase)
-                
-                new_option = {
-                    title_column: title, 
-                    value_column: value,
-                    'Variant Price': value_price
-                }
-                
-                first_title = title_index == 0
-                first_value = value_index == 0
-                
-                if (first_title):
-                    if (first_value):
-                        row = {**simple_product, **new_option}
-                        shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
-                    else:
-                        del new_option[title_column]
-                        row = {**variant_columns, **create_base_shopify_dict(new_option)}
-                        shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
-                else:
-                    if (first_value):
-                        new_option = new_option
-                    else:
-                        del new_option[title_column]
-                    row = {**variant_columns, **create_base_shopify_dict(new_option)}
-                    shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
-    else: 
+    if (has_options == False):
         new_option = {'Option1 Name': 'Title', 'Option1 Value': 'Default Title'}
         row = {**simple_product, **new_option}
         shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
 
+    if (has_options == True):
+        option_titles = get_option_titles_by_sku(sku)
+        all_option_values = get_option_values_by_sku(sku)
+        all_option_prices = get_option_price_by_sku(sku)
+
+        # Allow for lookup by option_value: {[option_value]: option_price}
+        price_map: Dict[str, float] = {}
+        for outer_index, option_values in enumerate(all_option_values):
+            for inner_index, value in enumerate(option_values):
+                price_map[value] = all_option_prices[outer_index].values[inner_index]
+
+        # Create all possible variants, populate with row information
+        all_value_combinations = list(product(*all_option_values))
+
+        if len(all_value_combinations) > 100:
+            print(f"handle: {row['Handle']} sku: {row['Variant SKU']} skipped, | has {len(all_value_combinations)} variants")
+            continue
+
+        all_variant_rows: List[dict] = []
+        for value_index, value_tuple in enumerate(all_value_combinations):
+            row = {}
+            row['Variant Price'] = simple_product['Variant Price']
+            # Add unique option values
+            for option_index, option_value in enumerate(value_tuple):
+                n = option_index + 1
+                if n > 3: break # Shopify can only handle 3 options, handle later
+                
+                row[f'Option{n} Value'] = option_value.strip()
+                row[f'Option{n} Name'] = ''
+                row['Variant Price'] = row['Variant Price'] + price_map[option_value]
+
+            # Populate shared columns            
+            is_first_row = value_index == 0
+            if is_first_row:
+                row = {**simple_product, **row}
+            else:
+                row = {**variant_columns, **row}
+                row = create_base_shopify_dict(row)
+
+            all_variant_rows.append(row)
+        
+        # Add row titles to first variant
+        for index, title in enumerate(option_titles):
+            n = index + 1
+            if n > 3: break # Shopify can only handle 3 options, handle later
+
+            all_variant_rows[0].update({f'Option{n} Name': title})
+
+        for row in all_variant_rows:
+            shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
+
+    print(f"{row['Handle']} | {int(time.time() - start_time)} seconds")
                 
 shopify_df_csv_output.to_csv(OUTPUT_PATH)
