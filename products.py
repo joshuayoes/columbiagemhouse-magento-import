@@ -123,6 +123,7 @@ def parse_total_gem_weight(input: str):
 
     return f'{parse_carats(input)} cw'
 
+print('Generating tags column')
 for index, row in magento_products.iterrows():
     tags: List[str] = []
     def add(label: str, input):
@@ -311,8 +312,10 @@ shopify_df_csv_output = pd.DataFrame(columns=final_columns)
 skus = list(shopify_df['Variant SKU'].unique())
 skus = filter_nan(skus)
 # skus = skus[:10]
-for sku in skus:
+skus_count = len(skus)
+for sku_index, sku in enumerate(skus):
     start_time = time.time()
+    position = f'{sku_index}/{skus_count}'
     simple_product = get_shopify_product_by_sku(sku).to_dict('records')[0]
     has_options = len(get_option_titles_by_sku(sku)) > 0
     variant_columns = {
@@ -341,7 +344,7 @@ for sku in skus:
         all_value_combinations = list(product(*all_option_values))
 
         if len(all_value_combinations) > 100:
-            print(f"handle: {row['Handle']} sku: {row['Variant SKU']} skipped, | has {len(all_value_combinations)} variants")
+            print(f"{position} | {simple_product['Handle']} skipped | has {len(all_value_combinations)} variants")
             continue
 
         all_variant_rows: List[dict] = []
@@ -351,7 +354,8 @@ for sku in skus:
             # Add unique option values
             for option_index, option_value in enumerate(value_tuple):
                 n = option_index + 1
-                if n > 3: break # Shopify can only handle 3 options, handle later
+                if n > 3: 
+                    raise Exception(f'More than 3 values {option_value}')
                 
                 row[f'Option{n} Value'] = option_value.strip()
                 row[f'Option{n} Name'] = ''
@@ -370,13 +374,15 @@ for sku in skus:
         # Add row titles to first variant
         for index, title in enumerate(option_titles):
             n = index + 1
-            if n > 3: break # Shopify can only handle 3 options, handle later
+            if n > 3: 
+                raise Exception(f'More than 3 values {option_titles}')
 
             all_variant_rows[0].update({f'Option{n} Name': title})
 
+        # Add rows to output
         for row in all_variant_rows:
             shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
 
-    print(f"{row['Handle']} | {int(time.time() - start_time)} seconds")
+    print(f"{position} | {row['Handle']} | {int(time.time() - start_time)} seconds")
                 
 shopify_df_csv_output.to_csv(OUTPUT_PATH)
