@@ -218,9 +218,110 @@ def to_image_alt_text(label: Union[str, None], path: Union[str, None]):
 
 image_alt_text_column = magento_products[['_media_lable', '_media_image']].apply(lambda x: to_image_alt_text(x._media_lable, x._media_image), axis=1)
 
+# Handles Column
+def to_handles(handle: Union[str, None], title: Union[str, None], sku: Union[str, None]):
+    if pd.isna(handle) == True: return ''
+    if pd.isna(title) == True: return ''
+    if pd.isna(sku) == True: return ''
+
+    # Line 6095-6096
+    if title == '5x3mm Oval Natural Oregon Sunstone':
+        return '5x3mm-oval-natural-oregon-sunstone'
+    if title == '1.5mm Round Orange Zircon Melee':
+        return '1-5-round-orange-zircon-melee'
+    
+    # Line 7524-7529
+    if sku == 'E034-08401-U1_Nat':
+        return '1ct-natural-pastel-montana-sapphire-geocutstm-nat'
+    if sku == 'E034-08401-U1_Nat-Light':
+        return '1ct-natural-pastel-montana-sapphire-geocutstm-nat-light'
+    if sku == 'E034-08401-U1_Nat-Medium':
+        return '1ct-natural-pastel-montana-sapphire-geocutstm-nat-medium'
+    if sku == 'E034-08401-U1_Nat-Dark':
+        return '1ct-natural-pastel-montana-sapphire-geocutstm-nat-dark'
+    if sku == 'E034-08401-U1_Nat-Minor Inclusions':
+        return '1ct-natural-pastel-montana-sapphire-geocutstm-nat-minor-inclusions'
+    
+    # Line 7530-7533
+    if sku == 'E034-00304-NAT':
+        return '4x2-natural-untreated-pastel-montana-sapphire-baguettes-nat'
+    if sku == 'E034-00304-NAT-Light':
+        return '4x2-natural-untreated-pastel-montana-sapphire-baguettes-nat-light'
+    if sku == 'E034-00304-NAT-Medium':
+        return '4x2-natural-untreated-pastel-montana-sapphire-baguettes-nat-medium'
+    if sku == 'E034-00304-NAT-Dark':
+        return '4x2-natural-untreated-pastel-montana-sapphire-baguettes-nat-dark'
+    
+    # Line 7534-7537
+    if sku == 'E034-00303-NAT':
+        return '5x2-5mm-natural-untreated-pastel-montana-sapphire-baguettes-nat'
+    if sku == 'E034-00303-NAT-Light':
+        return '5x2-5mm-natural-untreated-pastel-montana-sapphire-baguettes-nat-light'
+    if sku == 'E034-00303-NAT-Medium':
+        return '5x2-5mm-natural-untreated-pastel-montana-sapphire-baguettes-nat-medium'
+    if sku == 'E034-00303-NAT-Dark':
+        return '5x2-5mm-natural-untreated-pastel-montana-sapphire-baguettes-nat-dark'
+    
+    # Line 7788-7789
+    if sku == 'E034-11940-Fancy':
+        return '4mm-hexagonal-rose-cut-fancy-montana-sapphires'
+    if sku == 'E034-11944-Fancy':
+        return '4-5m-hexagonal-rose-cut-fancy-montana-sapphires'
+    
+    # Line 7990-7991
+    if sku == 'E034-11940-Fancy':
+        return '12mm-round-cabochon-cut-gem-blue-mexican-chalcedony'
+    if sku == 'E034-11944-Fancy':
+        return '12mm-round-cabochon-cut-gem-blue-mexican-chalcedony'
+
+    # Line 9586-9587
+    if title == '8x6mm Oval Cabochon Cut Oregon Chocolate Agate':
+        return '8x6mm-oval-cabochon-cut-oregon-chocolate-agate'
+    
+    # Line 9756-9760
+    if sku == 'E034-01635-1':
+        return '3-5mm-hexagonal-cut-montana-sapphires'
+    if sku == 'E034-01635-LtBlue':
+        return '3-5mm-hexagonal-cut-montana-sapphires-ltblue'
+    if sku == 'E034-01635-MedBlue':
+        return '3-5mm-hexagonal-cut-montana-sapphires-medblue'
+    if sku == 'E034-01635-FineBlue':
+        return '3-5mm-hexagonal-cut-montana-sapphires-fineblue'
+    if sku == 'E034-01635-Teal':
+        return '3-5mm-hexagonal-cut-montana-sapphires-teal'
+    
+    # Line 9761-9765
+    if sku == 'E034-01645-1':
+        return '4-5mm-hexagonal-cut-montana-sapphires'
+    if sku == 'E034-01645-LtBlue':
+        return '4-5mm-hexagonal-cut-montana-sapphires-ltblue'
+    if sku == 'E034-01645-MedBlue':
+        return '4-5mm-hexagonal-cut-montana-sapphires-medblue'
+    if sku == 'E034-01645-FineBlue':
+        return '4-5mm-hexagonal-cut-montana-sapphires-fineblue'
+    if sku == 'E034-01645-Teal':
+        return '4-5mm-hexagonal-cut-montana-sapphires-teal'
+    
+    # Line 9761-9765
+    if sku == 'E034-01650-1':
+        return '5mm-hexagonal-cut-montana-sapphires'
+    if sku == 'E034-01650-MedBlue':
+        return '5mm-hexagonal-cut-montana-sapphires-medblue'
+    if sku == 'E034-01650-FineBlue':
+        return '5mm-hexagonal-cut-montana-sapphires-fineblue'
+    if sku == 'E034-01650-Teal':
+        return '5mm-hexagonal-cut-montana-sapphires-teal'
+
+    return handle
+
+
+handles_column = magento_products[['url_key', 'name', 'sku']].apply(
+    lambda x: to_handles(x.url_key, x._values[1], x.sku), axis=1
+)
+
 # Format to match Shopify CSV import shape
 shopify_df = { 
-    'Handle': magento_products['url_key'],
+    'Handle': handles_column,
     'Title': magento_products['name'],
     'Body (HTML)': body_html_column,
     'Vendor': empty_column,
@@ -416,17 +517,29 @@ def print_variant_product(position, handle, time, variant_count):
 
 print_info('Begin to generate final spreadsheets for product import by SKU value...')
 
+SKUS_TO_SKIP = ['371-09195-1', '9565-']
+
 for sku_index, sku in enumerate(skus):
     start_time = time.time()
     position = f'{sku_index}/{skus_count}'
     simple_product = get_shopify_product_by_sku(sku).to_dict('records')[0]
-    has_options = len(get_option_titles_by_sku(sku)) > 0
+    has_options = len(get_option_titles_by_sku(sku)) > 0 
     variant_columns = {
         'Handle': simple_product['Handle'],
         'Variant SKU': simple_product['Variant SKU'],
         'Variant Grams': simple_product['Variant Grams'],
         'Variant Weight Unit': simple_product['Variant Weight Unit'],
     }
+
+    # one_option_title = len(get_option_titles_by_sku(sku)) == 1
+    # if one_option_title == True:
+    #     option_values = get_option_values_by_sku(sku)[0]
+        
+    #     if len(option_values) == 1:
+    #         has_options = False
+
+    if sku in SKUS_TO_SKIP:
+        continue
 
     if (has_options == False):
         new_option = {'Option1 Name': 'Title', 'Option1 Value': 'Default Title'}
