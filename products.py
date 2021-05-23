@@ -1,7 +1,7 @@
 # 3rd party modules
 import sys
 import pandas as pd
-from typing import Dict, List
+from typing import Dict, List, Union
 import re
 import math
 import time
@@ -132,7 +132,7 @@ def carats_to_grams(input: str):
     grams = math.floor(grams_float)
 
     return grams
-
+ 
 variant_grams_column = list(map(carats_to_grams, magento_products['total_gem_weight']))
 
 # Tags column
@@ -194,10 +194,16 @@ def to_seo_description(input: str):
 seo_description_column = list(map(to_seo_description, magento_products['meta_description']))
 
 # Image Alt Text column
-def to_image_alt_text(input: str):
-    return sanitize_input(input, '')
+def to_image_alt_text(label: Union[str, None], path: Union[str, None]):
+    if type(path) is not str: return ''
+    if type(label) is not str: return ''
 
-image_alt_text_column = list(map(to_image_alt_text, magento_products['_media_lable']))
+    img_url = generate_url(path)
+    if img_url == '': return ''
+
+    return sanitize_input(label, '')
+
+image_alt_text_column = magento_products[['_media_lable', '_media_image']].apply(lambda x: to_image_alt_text(x._media_lable, x._media_image), axis=1)
 
 # Format to match Shopify CSV import shape
 shopify_df = { 
