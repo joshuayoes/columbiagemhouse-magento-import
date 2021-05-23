@@ -16,10 +16,28 @@ from customoptions import CustomOptions
 script_start_time = time.time()
 def to_ms(now: float, start: float): return int((now - start) * 1000)
 
+def pretty_print(*args):
+    columns: List[str] = []
+    for column in args:
+        content: str = column['content']
+        length: int = column['length']
+
+        columns.append(content.ljust(length))
+
+    print(' | '.join(columns))
+
+def print_info(message: str):
+    pretty_print(
+        {'content': 'INFO █', 'length': len('4225/4225')},
+        {'content': message, 'length': len(message)}
+    )
+
 # Import/output spreadsheet constants
 NOW_DATE_TIME = time.strftime("%Y%m%d_%H%M%S")
 IMPORT_PATH = 'data/catalog_product_20210403_173129.csv'
 OUTPUT_PATH = f'data/shopify_product_import_{NOW_DATE_TIME}.csv'
+
+print_info('Generating Magneto import csv dataframe')
 
 # Handle Magneto product import CSV
 raw_magento_product_csv = pd.read_csv(IMPORT_PATH, low_memory=False)
@@ -60,7 +78,7 @@ def backfill_array(input: List[str], empty_val = ''):
     
     return output
 
-# Generate Shopify dataframe columns
+print_info('Generating Shopify dataframe columns')
 
 # Published column
 def to_published(value: int): 
@@ -86,8 +104,6 @@ def to_status(value: int):
 status_column = list(map(to_status, magento_products['status']))
 status_column = backfill_array(status_column)
 
-print('Generating img_src_column')
-
 # Img Src column
 def generate_url(path): 
     img_base = 'https://columbiagemhouse.com/media/catalog/product/cache/1/image/400x400/9df78eab33525d08d6e5fb8d27136e95'
@@ -103,8 +119,6 @@ def generate_url(path):
     return url
 
 img_src_column = list(map(generate_url, magento_products['_media_image']))
-
-print('img_src_column generated')
 
 # Variant Grams column
 def parse_carats(input: str):
@@ -148,7 +162,7 @@ def parse_total_gem_weight(input: str):
 
     return f'{parse_carats(input)} cw'
 
-print('Generating tags column')
+print_info('Generating tags column (slow)')
 for index, row in magento_products.iterrows():
     tags: List[str] = []
     def add(label: str, input):
@@ -170,8 +184,6 @@ for index, row in magento_products.iterrows():
 
     joined_tags = ', '.join(tags)
     tags_column.append(joined_tags)
-
-print('Tags column generated')
 
 def sanitize_input(input: str, replacement: str):
     if pd.isna(input): return ''
@@ -244,9 +256,16 @@ shopify_df = {
 }
 
 shopify_df = pd.DataFrame(data=shopify_df) 
-print('shopify_df populated')
+print_info('Shopify dataframe populated')
 
 
+def filter_longest(x):
+    if pd.isna(x):
+        return 0
+
+    return len(x)
+
+longest_handle = shopify_df['Handle'].map(filter_longest).max()
 
 # Utilities for creating variant rows 
 def filter_nan(input: List): return list(filter(lambda v: v==v, input))
@@ -373,12 +392,30 @@ custom_options_count = 0
 # Awkward and slow, but nececessary to get options formatted the way shopify wants it
 skus = list(shopify_df['Variant SKU'].unique())
 skus = filter_nan(skus)
+skus_count = len(skus)
 
 include_only_first_10 = ('-s' in sys.argv)
 if include_only_first_10 == True:
     skus = skus[:10]
 
-skus_count = len(skus)
+# Logging utilites
+def print_simple_product(position, handle, time):
+    pretty_print(
+        {'content': position, 'length': len(f'{skus_count}/{skus_count}')},
+        {'content': handle, 'length': longest_handle},
+        {'content': time, 'length': len('1000 ms')},
+    )
+    
+def print_variant_product(position, handle, time, variant_count):
+    pretty_print(
+        {'content': position, 'length': len(f'{skus_count}/{skus_count}')},
+        {'content': handle, 'length': longest_handle},
+        {'content': time, 'length': len('1000 ms')},
+        {'content': variant_count, 'length': len('1000 variants')},
+    )
+
+print_info('Begin to generate final spreadsheets for product import by SKU value...')
+
 for sku_index, sku in enumerate(skus):
     start_time = time.time()
     position = f'{sku_index}/{skus_count}'
@@ -419,7 +456,9 @@ for sku_index, sku in enumerate(skus):
             shopify_df_csv_output = shopify_df_csv_output.append(custom_row, ignore_index=True)
             
             custom_options_count = custom_options_count + 1
-            print(f"{position} | {simple_product['Handle']} | {len(all_value_combinations)} variants | {to_ms(time.time(), start_time)} ms")
+
+            variant_execution_time = to_ms(time.time(), start_time)
+            print_variant_product(position, simple_product['Handle'], f'{variant_execution_time} ms', f'{len(all_value_combinations)} variants')
             continue 
 
         # Handle products with less than 100 variants
@@ -459,16 +498,17 @@ for sku_index, sku in enumerate(skus):
         for row in all_variant_rows:
             shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
 
-    print(f"{position} | {row['Handle']} | {to_ms(time.time(), start_time)} ms")
+    execution_time = to_ms(time.time(), start_time)
+    print_simple_product(position, row['Handle'], f'{execution_time} ms')
 
 def include_index(): return ('-i' in sys.argv)
 
 # Output results to spreadsheet 
 pwd = os.getcwd()
 shopify_df_csv_output.to_csv(OUTPUT_PATH, index=include_index())
-print(f'Shopify Products Import CSV generated at: {pwd}/{OUTPUT_PATH}')
+print_info(f'Shopify Products Import CSV generated at: {pwd}/{OUTPUT_PATH}')
 custom_options.to_xlsx()
-print(f'Number of customized options: {custom_options_count}')
+print_info(f'Number of customized options: {custom_options_count}')
 
 
 # Log script timing
@@ -476,6 +516,7 @@ script_time_in_total_secs = int(time.time() - script_start_time)
 script_time_in_min = int(script_time_in_total_secs / 60)
 script_time_in_remaining_secs = script_time_in_total_secs % 60
 if (script_time_in_total_secs > 60):
-    print(f'Script completed in {script_time_in_min} minutes and {script_time_in_remaining_secs} seconds')
+    print_info(f'Script completed in {script_time_in_min} minutes and {script_time_in_remaining_secs} seconds')
 else:
-    print(f'Script completed in {script_time_in_total_secs} seconds')
+    print_info(f'Script completed in {script_time_in_total_secs} seconds')
+
