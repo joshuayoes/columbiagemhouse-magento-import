@@ -198,6 +198,7 @@ BROKEN_URLS = [
     "https://columbiagemhouse.com/media/catalog/product/cache/1/image/400x400/9df78eab33525d08d6e5fb8d27136e95/5/6/565-8991-1_3_1.jpg",
     "https://columbiagemhouse.com/media/catalog/product/cache/1/image/400x400/9df78eab33525d08d6e5fb8d27136e95/6/2/620-9525x18-1.jpg",
     "https://columbiagemhouse.com/media/catalog/product/cache/1/image/400x400/9df78eab33525d08d6e5fb8d27136e95/e/0/e034-705-1_group-2.jpg",
+    "https://columbiagemhouse.com/media/catalog/product/cache/1/image/400x400/9df78eab33525d08d6e5fb8d27136e95/e/0/e034-11940-1.jpg"
 ]
 
 BROKEN_URL_MAP: Dict[str, bool] = {}
