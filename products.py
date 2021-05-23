@@ -1,3 +1,4 @@
+from images import BROKEN_URL_MAP, is_url_broken
 import pandas as pd
 from typing import Dict, List
 import re
@@ -5,11 +6,17 @@ import math
 import time
 from itertools import product
 
+from customoptions import CustomOptions
+
+script_start_time = time.time()
+
 NOW_DATE_TIME = time.strftime("%Y%m%d_%H%M%S")
 IMPORT_PATH = 'data/catalog_product_20210403_173129.csv'
 OUTPUT_PATH = f'data/shopify_product_import_{NOW_DATE_TIME}.csv'
 
 raw_magento_product_csv = pd.read_csv(IMPORT_PATH, low_memory=False)
+
+def to_ms(now: float, start: float): return int((now - start) * 1000)
 
 # Strip useless data
 def get_empty_columns(df: pd.DataFrame): 
@@ -71,15 +78,25 @@ def to_status(value: int):
 status_column = list(map(to_status, magento_products['status']))
 status_column = backfill_array(status_column)
 
+print('Generating img_src_column')
+
 # Img Src column
-def generate_url(ext): 
+def generate_url(path): 
     img_base = 'https://columbiagemhouse.com/media/catalog/product/cache/1/image/400x400/9df78eab33525d08d6e5fb8d27136e95'
-    if (type(ext) is str):
-        return img_base + ext
-    else:
+    
+    path_exists = type(path) is str
+    if path_exists == False: return ''
+    
+    url = img_base + path
+
+    if is_url_broken(url) == True:
         return ''
 
+    return url
+
 img_src_column = list(map(generate_url, magento_products['_media_image']))
+
+print('img_src_column generated')
 
 # Variant Grams column
 def parse_carats(input: str):
@@ -307,6 +324,9 @@ def calculate_variant_price(base, variant):
 final_columns = list(shopify_df.columns)
 shopify_df_csv_output = pd.DataFrame(columns=final_columns)
 
+custom_options = CustomOptions()
+custom_options_count = 0
+
 # Populate shopify_df_csv_output with unique sku rows and their variants appended
 # Awkward and slow, but nececessary to get options formatted the way shopify wants it
 skus = list(shopify_df['Variant SKU'].unique())
@@ -320,6 +340,7 @@ for sku_index, sku in enumerate(skus):
     has_options = len(get_option_titles_by_sku(sku)) > 0
     variant_columns = {
         'Handle': simple_product['Handle'],
+        'Variant SKU': simple_product['Variant SKU'],
         'Variant Grams': simple_product['Variant Grams'],
         'Variant Weight Unit': simple_product['Variant Weight Unit'],
     }
@@ -344,8 +365,15 @@ for sku_index, sku in enumerate(skus):
         all_value_combinations = list(product(*all_option_values))
 
         if len(all_value_combinations) > 100:
-            print(f"{position} | {simple_product['Handle']} skipped | has {len(all_value_combinations)} variants")
-            continue
+            custom_options.add_product_options(option_titles=option_titles, all_option_values=all_option_values, price_map=price_map, product_id=simple_product['Handle'], variant_id=simple_product['Variant SKU'])
+            
+            custom_new_option = {'Option1 Name': 'Title', 'Option1 Value': 'Default Title'}
+            custom_row = {**simple_product, **new_option}
+            shopify_df_csv_output = shopify_df_csv_output.append(custom_row, ignore_index=True)
+            
+            custom_options_count = custom_options_count + 1
+            print(f"{position} | {simple_product['Handle']} | {len(all_value_combinations)} variants | {to_ms(time.time(), start_time)} ms")
+            continue 
 
         all_variant_rows: List[dict] = []
         for value_index, value_tuple in enumerate(all_value_combinations):
@@ -383,6 +411,16 @@ for sku_index, sku in enumerate(skus):
         for row in all_variant_rows:
             shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
 
-    print(f"{position} | {row['Handle']} | {int(time.time() - start_time)} seconds")
+    print(f"{position} | {row['Handle']} | {to_ms(time.time(), start_time)} ms")
                 
-shopify_df_csv_output.to_csv(OUTPUT_PATH)
+shopify_df_csv_output.to_csv(OUTPUT_PATH, index=False)
+custom_options.to_xlsx()
+print(f'Number of customized options: {custom_options_count}')
+
+script_time_in_total_secs = int(time.time() - script_start_time)
+script_time_in_min = int(script_time_in_total_secs / 60)
+script_time_in_remaining_secs = script_time_in_total_secs % 60
+if (script_time_in_total_secs > 60):
+    print(f'Script completed in {script_time_in_min} minutes and {script_time_in_remaining_secs} seconds')
+else:
+    print(f'Script completed in {script_time_in_total_secs} seconds')

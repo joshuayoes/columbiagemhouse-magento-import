@@ -1,5 +1,7 @@
 .venv
 data/*.csv
 data/*.txt
+data/*.xlsx
 !data/catalog_product_*.csv
 !data/customer_*.csv
+__pycache__
