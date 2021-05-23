@@ -69,4 +69,4 @@ class CustomOptions:
         OUTPUT_PATH = f'data/shopify_custom_option_import_{NOW_DATE_TIME}.xlsx'
         self.df.to_excel(OUTPUT_PATH, index=False)
         pwd = os.getcwd()
-        print(f'INFO █    | Infinite Product Options import spreadsheet generated at: {pwd}/{OUTPUT_PATH}')
+        print(f'INFO - Infinite Product Options import spreadsheet generated at: {pwd}/{OUTPUT_PATH}')

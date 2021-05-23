@@ -27,10 +27,7 @@ def pretty_print(*args):
     print(' | '.join(columns))
 
 def print_info(message: str):
-    pretty_print(
-        {'content': 'INFO █', 'length': len('4225/4225')},
-        {'content': message, 'length': len(message)}
-    )
+    print(f'INFO - {message}')
 
 # Import/output spreadsheet constants
 NOW_DATE_TIME = time.strftime("%Y%m%d_%H%M%S")
