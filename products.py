@@ -172,11 +172,38 @@ for index, row in magento_products.iterrows():
 
 print('Tags column generated')
 
+def sanitize_input(input: str, replacement: str):
+    if pd.isna(input): return ''
+
+    sanitized = input.replace('\r\n', replacement)
+    sanitized = sanitized.replace('\r', replacement)
+    sanitized = sanitized.replace('\n', replacement)
+    sanitized = sanitized.replace('\t', replacement)
+    return sanitized
+
+# Body (HTML) column
+def to_body_html_column(input: str):
+    return sanitize_input(input, '<br/>')
+
+body_html_column = list(map(to_body_html_column, magento_products['short_description']))
+
+# SEO Description column
+def to_seo_description(input: str):
+    return sanitize_input(input, '')
+
+seo_description_column = list(map(to_seo_description, magento_products['meta_description']))
+
+# Image Alt Text column
+def to_image_alt_text(input: str):
+    return sanitize_input(input, '')
+
+image_alt_text_column = list(map(to_image_alt_text, magento_products['_media_lable']))
+
 # Format to match Shopify CSV import shape
 shopify_df = { 
     'Handle': magento_products['url_key'],
     'Title': magento_products['name'],
-    'Body (HTML)': magento_products['short_description'],
+    'Body (HTML)': body_html_column,
     'Vendor': empty_column,
     'Type': magento_products['_category'],
     'Tags': tags_column,
@@ -200,10 +227,10 @@ shopify_df = {
     'Variant Barcode': empty_column,
     'Image Src': img_src_column, 
     'Image Position': empty_column,
-    'Image Alt Text': magento_products['_media_lable'], 
+    'Image Alt Text': image_alt_text_column,
     'Gift Card': generate_column('FALSE'),
     'SEO Title': magento_products['meta_title'],
-    'SEO Description': magento_products['meta_description'],
+    'SEO Description': seo_description_column,
     'Variant Weight Unit': generate_column('g'),
     'Status': status_column, 
     'Collection': magento_products['collection_1'], 
@@ -339,7 +366,11 @@ custom_options_count = 0
 # Awkward and slow, but nececessary to get options formatted the way shopify wants it
 skus = list(shopify_df['Variant SKU'].unique())
 skus = filter_nan(skus)
-# skus = skus[:10]
+
+include_only_first_10 = ('-s' in sys.argv)
+if include_only_first_10 == True:
+    skus = skus[:10]
+
 skus_count = len(skus)
 for sku_index, sku in enumerate(skus):
     start_time = time.time()
