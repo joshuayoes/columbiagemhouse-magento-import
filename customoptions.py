@@ -1,3 +1,4 @@
+import os
 import time
 from typing import Dict
 import pandas as pd
@@ -67,3 +68,5 @@ class CustomOptions:
         NOW_DATE_TIME = time.strftime("%Y%m%d_%H%M%S")
         OUTPUT_PATH = f'data/shopify_custom_option_import_{NOW_DATE_TIME}.xlsx'
         self.df.to_excel(OUTPUT_PATH, index=False)
+        pwd = os.getcwd()
+        print(f'Infinite Product Options import spreadsheet generated at: {pwd}/{OUTPUT_PATH}')

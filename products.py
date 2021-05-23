@@ -1,5 +1,6 @@
 # 3rd party modules
 import sys
+import os
 import pandas as pd
 from typing import Dict, List, Union
 import re
@@ -463,9 +464,12 @@ for sku_index, sku in enumerate(skus):
 def include_index(): return ('-i' in sys.argv)
 
 # Output results to spreadsheet 
+pwd = os.getcwd()
 shopify_df_csv_output.to_csv(OUTPUT_PATH, index=include_index())
+print(f'Shopify Products Import CSV generated at: {pwd}/{OUTPUT_PATH}')
 custom_options.to_xlsx()
 print(f'Number of customized options: {custom_options_count}')
+
 
 # Log script timing
 script_time_in_total_secs = int(time.time() - script_start_time)
