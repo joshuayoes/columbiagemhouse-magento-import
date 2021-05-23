@@ -1,4 +1,4 @@
-from images import BROKEN_URL_MAP, is_url_broken
+# 3rd party modules
 import pandas as pd
 from typing import Dict, List
 import re
@@ -6,17 +6,21 @@ import math
 import time
 from itertools import product
 
+# Local modules
+from images import is_url_broken
 from customoptions import CustomOptions
-
+ 
+# Logging utilities
 script_start_time = time.time()
+def to_ms(now: float, start: float): return int((now - start) * 1000)
 
+# Import/output spreadsheet constants
 NOW_DATE_TIME = time.strftime("%Y%m%d_%H%M%S")
 IMPORT_PATH = 'data/catalog_product_20210403_173129.csv'
 OUTPUT_PATH = f'data/shopify_product_import_{NOW_DATE_TIME}.csv'
 
+# Handle Magneto product import CSV
 raw_magento_product_csv = pd.read_csv(IMPORT_PATH, low_memory=False)
-
-def to_ms(now: float, start: float): return int((now - start) * 1000)
 
 # Strip useless data
 def get_empty_columns(df: pd.DataFrame): 
@@ -53,6 +57,8 @@ def backfill_array(input: List[str], empty_val = ''):
             output.append(past_value)
     
     return output
+
+# Generate Shopify dataframe columns
 
 # Published column
 def to_published(value: int): 
@@ -324,6 +330,7 @@ def calculate_variant_price(base, variant):
 final_columns = list(shopify_df.columns)
 shopify_df_csv_output = pd.DataFrame(columns=final_columns)
 
+# Initialize Infinite Product Options spreadsheet export
 custom_options = CustomOptions()
 custom_options_count = 0
 
@@ -364,6 +371,7 @@ for sku_index, sku in enumerate(skus):
         # Create all possible variants, populate with row information
         all_value_combinations = list(product(*all_option_values))
 
+        # Handle products with more than 100 variants
         if len(all_value_combinations) > 100:
             custom_options.add_product_options(option_titles=option_titles, all_option_values=all_option_values, price_map=price_map, product_id=simple_product['Handle'], variant_id=simple_product['Variant SKU'])
             
@@ -375,6 +383,7 @@ for sku_index, sku in enumerate(skus):
             print(f"{position} | {simple_product['Handle']} | {len(all_value_combinations)} variants | {to_ms(time.time(), start_time)} ms")
             continue 
 
+        # Handle products with less than 100 variants
         all_variant_rows: List[dict] = []
         for value_index, value_tuple in enumerate(all_value_combinations):
             row = {}
@@ -412,11 +421,13 @@ for sku_index, sku in enumerate(skus):
             shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
 
     print(f"{position} | {row['Handle']} | {to_ms(time.time(), start_time)} ms")
-                
+
+# Output results to spreadsheet 
 shopify_df_csv_output.to_csv(OUTPUT_PATH, index=False)
 custom_options.to_xlsx()
 print(f'Number of customized options: {custom_options_count}')
 
+# Log script timing
 script_time_in_total_secs = int(time.time() - script_start_time)
 script_time_in_min = int(script_time_in_total_secs / 60)
 script_time_in_remaining_secs = script_time_in_total_secs % 60
