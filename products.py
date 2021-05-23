@@ -1,4 +1,5 @@
 # 3rd party modules
+import sys
 import pandas as pd
 from typing import Dict, List
 import re
@@ -422,8 +423,10 @@ for sku_index, sku in enumerate(skus):
 
     print(f"{position} | {row['Handle']} | {to_ms(time.time(), start_time)} ms")
 
+def include_index(): return ('-i' in sys.argv)
+
 # Output results to spreadsheet 
-shopify_df_csv_output.to_csv(OUTPUT_PATH, index=False)
+shopify_df_csv_output.to_csv(OUTPUT_PATH, index=include_index())
 custom_options.to_xlsx()
 print(f'Number of customized options: {custom_options_count}')
 
