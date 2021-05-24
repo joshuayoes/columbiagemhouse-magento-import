@@ -236,6 +236,8 @@ def to_handles(handle: Union[str, None], title: Union[str, None], sku: Union[str
         return '1ct-natural-pastel-montana-sapphire-geocutstm-nat-medium'
     if sku == 'E034-08401-U1_Nat-Dark':
         return '1ct-natural-pastel-montana-sapphire-geocutstm-nat-dark'
+    if sku == 'E034-08401-U1_Nat--Included':
+        return '1ct-natural-pastel-montana-sapphire-geocutstm-nat-included'
     if sku == 'E034-08401-U1_Nat-Minor Inclusions':
         return '1ct-natural-pastel-montana-sapphire-geocutstm-nat-minor-inclusions'
     
@@ -264,12 +266,6 @@ def to_handles(handle: Union[str, None], title: Union[str, None], sku: Union[str
         return '4mm-hexagonal-rose-cut-fancy-montana-sapphires'
     if sku == 'E034-11944-Fancy':
         return '4-5m-hexagonal-rose-cut-fancy-montana-sapphires'
-    
-    # Line 7990-7991
-    if sku == 'E034-11940-Fancy':
-        return '12mm-round-cabochon-cut-gem-blue-mexican-chalcedony'
-    if sku == 'E034-11944-Fancy':
-        return '12mm-round-cabochon-cut-gem-blue-mexican-chalcedony'
 
     # Line 9586-9587
     if title == '8x6mm Oval Cabochon Cut Oregon Chocolate Agate':
@@ -308,6 +304,18 @@ def to_handles(handle: Union[str, None], title: Union[str, None], sku: Union[str
         return '5mm-hexagonal-cut-montana-sapphires-fineblue'
     if sku == 'E034-01650-Teal':
         return '5mm-hexagonal-cut-montana-sapphires-teal'
+
+    # Line 9754-9758
+    if sku == 'E034-01640-1':
+        return '4mm-hexagonal-cut-montana-sapphires'
+    if sku == 'E034-01640-LtBlue':
+        return '4mm-hexagonal-cut-montana-sapphires-ltblue'
+    if sku == 'E034-01640-MedBlue':
+        return '4mm-hexagonal-cut-montana-sapphires-medblue'
+    if sku == 'E034-01640-FineBlue':
+        return '4mm-hexagonal-cut-montana-sapphires-fineblue'
+    if sku == 'E034-01640-Teal':
+        return '4mm-hexagonal-cut-montana-sapphires-teal'
 
     return handle
 
