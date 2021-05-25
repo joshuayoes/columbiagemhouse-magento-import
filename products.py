@@ -500,9 +500,18 @@ skus = list(shopify_df['Variant SKU'].unique())
 skus = filter_nan(skus)
 skus_count = len(skus)
 
+# Smaller ranges to import Custom Options
+# [:1000]
+# [1000:1250]
+# [1250:1300]
+# [1300:1500]
+# [1500:2500]
+# [2500:4000]
+# [4000:]
+
 include_only_first_10 = ('-s' in sys.argv)
 if include_only_first_10 == True:
-    skus = skus[:10]
+    skus = skus[0:10]
 
 # Logging utilites
 def print_simple_product(position, handle, time):
@@ -535,13 +544,6 @@ for sku_index, sku in enumerate(skus):
         'Variant Grams': simple_product['Variant Grams'],
         'Variant Weight Unit': simple_product['Variant Weight Unit'],
     }
-
-    # one_option_title = len(get_option_titles_by_sku(sku)) == 1
-    # if one_option_title == True:
-    #     option_values = get_option_values_by_sku(sku)[0]
-        
-    #     if len(option_values) == 1:
-    #         has_options = False
 
     if sku in SKUS_TO_SKIP:
         continue
