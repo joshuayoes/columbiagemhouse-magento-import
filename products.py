@@ -502,6 +502,43 @@ def get_option_price_by_sku(sku: str):
 
     return all_option_prices
 
+def get_child_product_variant_sku_by_value(parent_sku: str, value: str):
+    product_variants = get_variants_by_sku(parent_sku)
+    option_titles = get_option_titles_by_sku(parent_sku)
+
+    title_key = '_super_attribute_code'
+    cursor_key = 'sku'
+    sku_key = '_super_products_sku'
+    value_key = '_super_attribute_option'
+
+    child_product_sku: str = ''
+
+    simple_or_configurable = product_variants.head()['_type']._values[0]
+
+    if simple_or_configurable == 'simple':
+        return ''
+
+    for title in option_titles:
+        title_start_index: int = product_variants.loc[product_variants[title_key] == title].index[0]
+        
+        cursor_index = title_start_index + 1
+        value_indexes = [title_start_index]
+        
+        next_row = magento_products.iloc[cursor_index]
+        while (type(next_row[cursor_key]) is not str):
+            value_indexes.append(cursor_index)
+            cursor_index += 1
+            next_row = magento_products.iloc[cursor_index]
+
+        option_rows: pd.DataFrame = magento_products.iloc[value_indexes]
+        option_sku = option_rows.loc[option_rows[value_key] == value]
+        option_sku = option_sku[sku_key]._values[0]
+
+        if pd.isna(option_sku) == False:
+            child_product_sku = option_sku
+
+    return child_product_sku 
+    
 def get_magento_product_by_sku(sku: str): 
     return magento_products.loc[magento_products['sku'] == sku]
 
@@ -645,6 +682,12 @@ for sku_index, sku in enumerate(skus):
                 row[f'Option{n} Value'] = option_value.strip()
                 row[f'Option{n} Name'] = ''
                 row['Variant Price'] = row['Variant Price'] + price_map[option_value]
+                
+                variant_sku = get_child_product_variant_sku_by_value(sku, option_value)
+
+                if variant_sku != '':
+                    row['Variant SKU'] = variant_sku
+
 
             # Populate shared columns
             is_first_row = value_index == 0
