@@ -401,28 +401,25 @@ def get_variants_by_sku(sku: str):
     all_variants: pd.DataFrame = magento_products.iloc[variant_indexes]
     return all_variants
 
-def get_child_product_option_titles_by_sku(sku: str):
-    child_products = get_variants_by_sku(sku)
+def get_child_product_option_titles_by_sku(sku: str, child_products: pd.DataFrame):
     titles = child_products['_super_attribute_code'].unique()
     titles: List[str] = filter_nan(titles)
 
     return titles
 
-def get_option_titles_by_sku(sku: str):
-    product_variants = get_variants_by_sku(sku)
+def get_option_titles_by_sku(sku: str, product_variants: pd.DataFrame):
     option_titles: List[str] = product_variants['_custom_option_title'].unique()
     option_titles = filter_nan(option_titles)
 
     parent_product = magento_products.iloc[get_magento_product_index_by_sku(sku)]
     if parent_product['_type'] == 'configurable':
-        child_titles = get_child_product_option_titles_by_sku(sku)
+        child_titles = get_child_product_option_titles_by_sku(sku, product_variants)
         option_titles  = option_titles + child_titles
 
     return option_titles
 
-def get_option_values_by_sku(sku: str):
-    product_variants = get_variants_by_sku(sku)
-    option_titles = get_option_titles_by_sku(sku)
+def get_option_values_by_sku(sku: str, product_variants: pd.DataFrame):
+    option_titles = get_option_titles_by_sku(sku, product_variants)
     all_option_values: List[List[str]] = []
 
     title_key = '_custom_option_title'
@@ -454,9 +451,8 @@ def get_option_values_by_sku(sku: str):
 
     return all_option_values
 
-def get_option_price_by_sku(sku: str):
-    product_variants = get_variants_by_sku(sku)
-    option_titles = get_option_titles_by_sku(sku)
+def get_option_price_by_sku(sku: str, product_variants: pd.DataFrame):
+    option_titles = get_option_titles_by_sku(sku, product_variants)
     all_option_prices: List[List[float]] = []
 
     base_price = float(product_variants.head()['price']._values[0])
@@ -494,7 +490,7 @@ def get_option_price_by_sku(sku: str):
                 ratio_decimal = float(percentage) / 100
                 additional_cost = base_price * ratio_decimal
 
-                return additional_cost
+                return round(additional_cost, 2)
 
             option_prices = option_prices.apply(normalize_price)
 
@@ -502,10 +498,11 @@ def get_option_price_by_sku(sku: str):
 
     return all_option_prices
 
-def get_child_product_variant_sku_by_value(parent_sku: str, value: str):
-    product_variants = get_variants_by_sku(parent_sku)
-    option_titles = get_option_titles_by_sku(parent_sku)
-
+def get_child_product_variant_sku_by_value(parent_sku: str, value: str, product_variants: pd.DataFrame):
+    simple_or_configurable = product_variants.head()['_type']._values[0]
+    if simple_or_configurable == 'simple':
+        return ''
+    
     title_key = '_super_attribute_code'
     cursor_key = 'sku'
     sku_key = '_super_products_sku'
@@ -513,11 +510,7 @@ def get_child_product_variant_sku_by_value(parent_sku: str, value: str):
 
     child_product_sku: str = ''
 
-    simple_or_configurable = product_variants.head()['_type']._values[0]
-
-    if simple_or_configurable == 'simple':
-        return ''
-
+    option_titles = get_option_titles_by_sku(parent_sku, product_variants)
     for title in option_titles:
         title_start_index: int = product_variants.loc[product_variants[title_key] == title].index[0]
         
@@ -536,6 +529,7 @@ def get_child_product_variant_sku_by_value(parent_sku: str, value: str):
 
         if pd.isna(option_sku) == False:
             child_product_sku = option_sku
+            break
 
     return child_product_sku 
     
@@ -624,7 +618,8 @@ for sku_index, sku in enumerate(skus):
     start_time = time.time()
     position = f'{sku_index}/{skus_count}'
     simple_product = get_shopify_product_by_sku(sku).to_dict('records')[0]
-    has_options = len(get_option_titles_by_sku(sku)) > 0 
+    product_variants = get_variants_by_sku(sku)
+    has_options = len(get_option_titles_by_sku(sku, product_variants)) > 0 
     variant_columns = {
         'Handle': simple_product['Handle'],
         'Variant SKU': simple_product['Variant SKU'],
@@ -641,9 +636,9 @@ for sku_index, sku in enumerate(skus):
         shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
 
     if (has_options == True):
-        option_titles = get_option_titles_by_sku(sku)
-        all_option_values = get_option_values_by_sku(sku)
-        all_option_prices = get_option_price_by_sku(sku)
+        option_titles = get_option_titles_by_sku(sku, product_variants)
+        all_option_values = get_option_values_by_sku(sku, product_variants)
+        all_option_prices = get_option_price_by_sku(sku, product_variants)
 
         # Allow for lookup by option_value: {[option_value]: option_price}
         price_map: Dict[str, float] = {}
@@ -683,7 +678,7 @@ for sku_index, sku in enumerate(skus):
                 row[f'Option{n} Name'] = ''
                 row['Variant Price'] = row['Variant Price'] + price_map[option_value]
                 
-                variant_sku = get_child_product_variant_sku_by_value(sku, option_value)
+                variant_sku = get_child_product_variant_sku_by_value(sku, option_value, product_variants)
 
                 if variant_sku != '':
                     row['Variant SKU'] = variant_sku
