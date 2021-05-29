@@ -651,10 +651,17 @@ for sku_index, sku in enumerate(skus):
 
         # Handle products with more than 100 variants
         if len(all_value_combinations) > 100:
-            custom_options.add_product_options(option_titles=option_titles, all_option_values=all_option_values, price_map=price_map, product_id=simple_product['Handle'], variant_id=simple_product['Variant SKU'])
+            custom_options.add_product_options(
+                option_titles=option_titles, 
+                all_option_values=all_option_values, 
+                price_map=price_map, 
+                product_id=simple_product['Handle'], 
+                variant_id=simple_product['Variant SKU']
+            )
             
             custom_new_option = {'Option1 Name': 'Title', 'Option1 Value': 'Default Title'}
-            custom_row = {**simple_product, **new_option}
+            custom_row = {**simple_product, **custom_new_option}
+            custom_row['Tags'] += ', Options Managed By Infinite Product Options'
             shopify_df_csv_output = shopify_df_csv_output.append(custom_row, ignore_index=True)
             
             custom_options_count = custom_options_count + 1
