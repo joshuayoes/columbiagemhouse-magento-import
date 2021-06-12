@@ -198,6 +198,17 @@ def to_body_html_column(input: str):
 
 body_html_column = list(map(to_body_html_column, magento_products['short_description']))
 
+# def filter_body_with_links(input: str):
+#     if pd.isna(input):
+#         return ''
+
+#     if bool(re.search(r'<a.*?>', input)):
+#         return ''
+
+#     return input
+
+# body_html_column = list(map(filter_body_with_links, body_html_column))
+
 # SEO Description column
 def to_seo_description(input: str):
     return sanitize_input(input, '')
