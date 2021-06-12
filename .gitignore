@@ -6,3 +6,4 @@ __pycache__
 data/*
 !data/catalog_product_*.csv
 !data/customer_*.csv
+!data/wholesale-prices-columbiagemhouse*.csv

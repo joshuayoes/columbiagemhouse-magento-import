@@ -9,8 +9,9 @@ import time
 from itertools import product
 
 # Local modules
-from images import is_url_broken
 from customoptions import CustomOptions
+from customprices import CustomPrices
+from images import is_url_broken
  
 # Logging utilities
 script_start_time = time.time()
@@ -324,6 +325,27 @@ handles_column = magento_products[['url_key', 'name', 'sku']].apply(
     lambda x: to_handles(x.url_key, x._values[1], x.sku), axis=1
 )
 
+# Variant Price column
+def to_retail_price(price: float):
+    if (pd.isna(price)):
+        return ''
+    
+    if price >= 0.0 and price <= 500.0:
+        return price * 3.0
+    
+    if price >= 500.01 and price <= 2000.0:
+        return price * 2.5
+
+    if price >= 2000.01 and price <= 15000.0:
+        return price * 2.0
+
+    if price >= 15000.01:
+        return price * 1.75
+
+    raise Exception('Price is not within a valid range')
+
+variant_price = magento_products['price'].apply(to_retail_price)
+
 # Format to match Shopify CSV import shape
 shopify_df = { 
     'Handle': handles_column,
@@ -345,7 +367,7 @@ shopify_df = {
     'Variant Inventory Qty': magento_products['qty'],
     'Variant Inventory Policy': generate_column('deny'), 
     'Variant Fulfillment Service': generate_column('manual'),
-    'Variant Price': magento_products['price'], 
+    'Variant Price': variant_price, 
     'Variant Compare At Price': empty_column, 
     'Variant Requires Shipping': generate_column('TRUE'), 
     'Variant Taxable': generate_column('TRUE'), 
@@ -358,6 +380,7 @@ shopify_df = {
     'SEO Description': seo_description_column,
     'Variant Weight Unit': generate_column('g'),
     'Status': status_column, 
+    'Cost per item': empty_column, 
     'Collection': magento_products['collection_1'], 
 }
 
@@ -401,7 +424,7 @@ def get_variants_by_sku(sku: str):
     all_variants: pd.DataFrame = magento_products.iloc[variant_indexes]
     return all_variants
 
-def get_child_product_option_titles_by_sku(sku: str, child_products: pd.DataFrame):
+def get_child_product_option_titles_from_products(child_products: pd.DataFrame):
     titles = child_products['_super_attribute_code'].unique()
     titles: List[str] = filter_nan(titles)
 
@@ -413,7 +436,7 @@ def get_option_titles_by_sku(sku: str, product_variants: pd.DataFrame):
 
     parent_product = magento_products.iloc[get_magento_product_index_by_sku(sku)]
     if parent_product['_type'] == 'configurable':
-        child_titles = get_child_product_option_titles_by_sku(sku, product_variants)
+        child_titles = get_child_product_option_titles_from_products(product_variants)
         option_titles  = option_titles + child_titles
 
     return option_titles
@@ -532,7 +555,7 @@ def get_child_product_variant_sku_by_value(parent_sku: str, value: str, product_
             break
 
     return child_product_sku 
-    
+
 def get_magento_product_by_sku(sku: str): 
     return magento_products.loc[magento_products['sku'] == sku]
 
@@ -567,6 +590,18 @@ def calculate_variant_price(base, variant):
     
     return int(base) + int(variant)
 
+def reduce_categories(product_variants: pd.DataFrame):
+    all_categories: List[str] = product_variants['_category'].unique()
+    all_categories = filter_nan(all_categories)
+
+    if len(all_categories) == 0:
+        return ''
+
+    last: str = all_categories[-1]
+    last = last.split('/')
+    end_of_last = last[-1]
+    return end_of_last.strip()
+
 # Initialize shopify_df_csv_output
 final_columns = list(shopify_df.columns)
 shopify_df_csv_output = pd.DataFrame(columns=final_columns)
@@ -574,6 +609,10 @@ shopify_df_csv_output = pd.DataFrame(columns=final_columns)
 # Initialize Infinite Product Options spreadsheet export
 custom_options = CustomOptions()
 custom_options_count = 0
+
+# Initialize Wholesale Club Custom Prices spreadsheet export
+custom_prices = CustomPrices()
+
 
 # Populate shopify_df_csv_output with unique sku rows and their variants appended
 # Awkward and slow, but nececessary to get options formatted the way shopify wants it
@@ -627,10 +666,23 @@ for sku_index, sku in enumerate(skus):
         'Variant Weight Unit': simple_product['Variant Weight Unit'],
     }
 
+    simple_product['Type'] = reduce_categories(product_variants)
+
+    if pd.isna(simple_product['Collection']):
+        simple_product['Collection'] = 'General'
+
     if sku in SKUS_TO_SKIP:
         continue
 
     if (has_options == False):
+        custom_prices.add_product(
+            product_type=simple_product['Type'],
+            product_title=simple_product['Title'],
+            variant_title='Default Title',
+            product_sku=simple_product['Variant SKU'],
+            product_price=simple_product['Cost per item'],
+        )
+
         new_option = {'Option1 Name': 'Title', 'Option1 Value': 'Default Title'}
         row = {**simple_product, **new_option}
         shopify_df_csv_output = shopify_df_csv_output.append(row, ignore_index=True)
@@ -658,13 +710,22 @@ for sku_index, sku in enumerate(skus):
                 product_id=simple_product['Handle'], 
                 variant_id=simple_product['Variant SKU']
             )
+            custom_options_count = custom_options_count + 1
             
             custom_new_option = {'Option1 Name': 'Title', 'Option1 Value': 'Default Title'}
             custom_row = {**simple_product, **custom_new_option}
             custom_row['Tags'] += ', Options Managed By Infinite Product Options'
+
+            custom_prices.add_product(
+                product_type=simple_product['Type'],
+                product_title=simple_product['Title'],
+                variant_title='Default Title',
+                product_sku=simple_product['Variant SKU'],
+                product_price=simple_product['Variant Price'],
+            )
+
             shopify_df_csv_output = shopify_df_csv_output.append(custom_row, ignore_index=True)
             
-            custom_options_count = custom_options_count + 1
 
             variant_execution_time = to_ms(time.time(), start_time)
             print_variant_product(position, simple_product['Handle'], f'{variant_execution_time} ms', f'{len(all_value_combinations)} variants')
@@ -689,8 +750,7 @@ for sku_index, sku in enumerate(skus):
 
                 if variant_sku != '':
                     row['Variant SKU'] = variant_sku
-
-
+                
             # Populate shared columns
             is_first_row = value_index == 0
             if is_first_row:
@@ -698,6 +758,15 @@ for sku_index, sku in enumerate(skus):
             else:
                 row = {**variant_columns, **row}
                 row = create_base_shopify_dict(row)
+
+            custom_prices.add_product(
+                product_type=simple_product['Type'],
+                product_title=simple_product['Title'],
+                variant_title=' / '.join(value_tuple),
+                product_sku=row['Variant SKU'],
+                product_price=row['Variant Price'],
+            )
+            
 
             all_variant_rows.append(row)
         
@@ -728,8 +797,9 @@ def include_index(): return ('-i' in sys.argv)
 pwd = os.getcwd()
 shopify_df_csv_output.to_csv(OUTPUT_PATH, index=include_index())
 print_info(f'Shopify Products Import CSV generated at: {pwd}/{OUTPUT_PATH}')
-custom_options.to_xlsx()
+# custom_options.to_xlsx()
 print_info(f'Number of customized options: {custom_options_count}')
+# custom_prices.to_csv()
 
 
 # Log script timing
