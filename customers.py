@@ -272,6 +272,20 @@ def to_note(number: str):
 
 note = magento_customer['customer_account_number'].apply(to_note)
 
+def to_tax_exempt(row: pd.Series):
+    tags, province_code = row._values
+
+    is_wholesale = bool(re.search('Wholesale', tags, re.IGNORECASE))
+    if is_wholesale == False and province_code == 'WA':
+        return "no"
+
+    return 'yes'
+
+tax_exempt = pd.DataFrame(data={
+    'tags': tags,
+    'province_code': province_code
+}).apply(to_tax_exempt, axis=1)
+
 shopify_df = {
     'First Name': magento_customer['firstname'],
     'Last Name': magento_customer['lastname'],
@@ -291,7 +305,7 @@ shopify_df = {
     'Total Orders': generate_column(''),
     'Tags': tags,
     'Note': note,
-    'Tax Exempt': generate_column('no'),
+    'Tax Exempt': tax_exempt,
 }
  
 shopify_df = pd.DataFrame(data=shopify_df) 
