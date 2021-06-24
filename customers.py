@@ -1,3 +1,4 @@
+import os
 from typing import Tuple
 import pandas as pd
 import time
@@ -6,7 +7,7 @@ import re
 import phonenumbers
 
 NOW_DATE_TIME = time.strftime("%Y%m%d_%H%M%S")
-IMPORT_PATH = 'data/customer_20210506_221850.csv'
+IMPORT_PATH = 'data/customer_20210624_214051.csv'
 OUTPUT_PATH = f'data/shopify_customer_import_{NOW_DATE_TIME}.csv'
 
 headers = ['email','_website','_store','confirmation','created_at','created_in','customer_account_number','disable_auto_group_change','dob','firstname','gender','group_id','lastname','mgs_social_fid','mgs_social_ftoken','mgs_social_gid','mgs_social_gtoken','mgs_social_tid','mgs_social_ttoken','middlename','password_created_at','password_hash','prefix','rp_customer_id','rp_token','rp_token_created_at','store_id','suffix','taxvat','website_id','password','_address_city','_address_company','_address_country_id','_address_fax','_address_firstname','_address_lastname','_address_postcode','_address_prefix','_address_region','_address_street','_address_suffix','_address_telephone','_address_vat_id','_address_default_billing_','_address_default_shipping_']
@@ -262,6 +263,15 @@ def format_phone(row: pd.Series):
 
 phone = magento_customer[['_address_telephone', '_address_country_id']].apply(format_phone, axis=1)
 
+
+def to_note(number: str):
+    if pd.isna(number):
+        return ""
+    
+    return f'Customer Account Number: {number}'
+
+note = magento_customer['customer_account_number'].apply(to_note)
+
 shopify_df = {
     'First Name': magento_customer['firstname'],
     'Last Name': magento_customer['lastname'],
@@ -280,7 +290,7 @@ shopify_df = {
     'Total Spent': generate_column(''),
     'Total Orders': generate_column(''),
     'Tags': tags,
-    'Note': generate_column(''),
+    'Note': note,
     'Tax Exempt': generate_column('no'),
 }
  
@@ -291,4 +301,6 @@ print(shopify_df[:10])
 
 print(len(shopify_df['Email'].unique()))
 
+pwd = os.getcwd()
+print(f'Customer CSV generated at: {pwd}/{OUTPUT_PATH}')
 shopify_df.to_csv(OUTPUT_PATH, index=True)
