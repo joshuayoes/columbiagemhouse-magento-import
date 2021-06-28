@@ -374,7 +374,7 @@ shopify_df = {
     'Option3 Value': empty_column, # Filled later
     'Variant SKU': magento_products['sku'],
     'Variant Grams': variant_grams_column, 
-    'Variant Inventory Tracker': empty_column,  
+    'Variant Inventory Tracker': generate_column('shopify'),  
     'Variant Inventory Qty': magento_products['qty'],
     'Variant Inventory Policy': generate_column('deny'), 
     'Variant Fulfillment Service': generate_column('manual'),
