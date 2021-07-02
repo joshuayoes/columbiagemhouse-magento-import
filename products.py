@@ -198,16 +198,16 @@ def to_body_html_column(input: str):
 
 body_html_column = list(map(to_body_html_column, magento_products['short_description']))
 
-# def filter_body_with_links(input: str):
-#     if pd.isna(input):
-#         return ''
+def filter_body_with_links(input: str):
+    if pd.isna(input):
+        return ''
 
-#     if bool(re.search(r'<a.*?>', input)):
-#         return ''
+    if bool(re.search(r'<a.*?>', input)):
+        return ''
 
-#     return input
+    return input
 
-# body_html_column = list(map(filter_body_with_links, body_html_column))
+body_html_column = list(map(filter_body_with_links, body_html_column))
 
 # SEO Description column
 def to_seo_description(input: str):
@@ -662,7 +662,11 @@ def print_variant_product(position, handle, time, variant_count):
 
 print_info('Begin to generate final spreadsheets for product import by SKU value...')
 
-SKUS_TO_SKIP = ['371-09195-1', '9565-']
+# These SKUs are added as variants of a simple product, 
+# so a duplicate simple product should be added.
+SKUS_TO_SKIP: List[str] = filter_nan(magento_products['_super_products_sku'].unique())
+SKUS_TO_SKIP.append('371-09195-1')
+SKUS_TO_SKIP.append('9565-')
 
 for sku_index, sku in enumerate(skus):
     start_time = time.time()
@@ -675,6 +679,8 @@ for sku_index, sku in enumerate(skus):
         'Variant SKU': simple_product['Variant SKU'],
         'Variant Grams': simple_product['Variant Grams'],
         'Variant Weight Unit': simple_product['Variant Weight Unit'],
+        'Variant Inventory Qty': simple_product['Variant Inventory Qty'],
+        'Variant Inventory Tracker': simple_product['Variant Inventory Tracker']
     }
 
     simple_product['Type'] = reduce_categories(product_variants)
